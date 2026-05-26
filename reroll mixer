@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Crack Reroll Mixer (크랙 리롤 믹서) 🧩
 // @namespace    http://tampermonkey.net/
-// @version      1.1.0-modified-ui
-// @description  리롤 답변을 A/B로 비교하고 [//]: 마크다운 주석까지 문단으로 인식해 편집본을 만들며 현재 답변에 안전하게 덮어씁니다. (UI 및 레이아웃 최종 보정본)
+// @version      1.1.1-fixed-alignment
+// @description  리롤 답변을 A/B로 비교하고 [//]: 마크다운 주석까지 문단으로 인식해 편집본을 만들며 현재 답변에 안전하게 덮어씁니다. (UI 레이아웃 및 스타일 충돌 보정 완료)
 // @author       Assistant
 // @match        https://crack.wrtn.ai/stories/*/episodes/*
 // @grant        GM_addStyle
@@ -474,9 +474,9 @@
                     </div>
                 </div>
 
-                <!-- 탭 기반 네비게이션 적용 (하단 회색 실선 포함) -->
-                <div class="cbm-tabs-container" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 12px; margin-bottom: 12px; flex-shrink: 0;">
-                    <div class="cbm-tabs" style="display: flex; gap: 12px; margin-bottom: -13px;">
+                <!-- 탭 기반 네비게이션 적용 및 가로 세로 배치 비율 보정 -->
+                <div class="cbm-tabs-container" style="display: flex; justify-content: center !important; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 12px; margin-bottom: 12px; flex-shrink: 0; width: 100%;">
+                    <div class="cbm-tabs">
                         <button class="cbm-tab active" data-tab="a">답변 A</button>
                         <button class="cbm-tab" data-tab="b">답변 B</button>
                         <button class="cbm-tab" data-tab="edit">편집본</button>
@@ -513,12 +513,12 @@
                     </section>
                 </div>
 
-                <!-- 하단 조작 버튼 (동일 규격 일렬 구성 - 너비 고정 적용) -->
-                <div class="ce-ai-footer" style="display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-top: 16px; flex-shrink: 0;">
-                    <div class="ce-ai-footer-right" style="display: flex; gap: 8px;">
+                <!-- 하단 조작 버튼 (동일 규격 일렬 구성 - 전체 가운데 정렬 보정) -->
+                <div class="ce-ai-footer" style="display: flex; justify-content: center !important; align-items: center; gap: 8px; margin-top: 16px; flex-shrink: 0; width: 100%;">
+                    <div class="ce-ai-footer-right" style="display: flex; gap: 8px; justify-content: center;">
                         <button class="crack-ext-ai-mbtn" data-copy style="width: 88px;">복사</button>
                         <button class="crack-ext-ai-mbtn" data-insert style="width: 88px;">입력창</button>
-                        <button class="crack-ext-ai-mbtn crack-ext-ai-mbtn-p" data-overwrite style="width: 88px;">덮어쓰기</button>
+                        <button class="crack-reroll-mbtn-p" data-overwrite style="width: 88px;">덮어쓰기</button>
                     </div>
                 </div>
             </div>
@@ -598,7 +598,7 @@
             return splitIntoParagraphs(getMessageContent(msg)).filter(Boolean);
         }
 
-        // 개별 답변 상세 정보 라벨을 한 줄로 정렬해 표시하는 함수 (Item 9 - 현재화면 배지 강조 적용)
+        // 개별 답변 상세 정보 라벨을 한 줄로 정렬해 표시하는 함수 (현재화면 배지 강조 적용)
         function renderPaneSubMeta(answerIndex, container) {
             const msg = bundle.variants[answerIndex];
             if (!msg) {
@@ -791,6 +791,16 @@
             }
         }
 
+        // 탭에 이벤트 바인딩
+        function setTab(tabName) {
+            overlay.querySelectorAll('[data-tab]').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.tab === tabName);
+            });
+            overlay.querySelectorAll('.crack-pane-content').forEach(pane => {
+                pane.style.display = pane.dataset.pane === tabName ? 'flex' : 'none';
+            });
+        }
+
         function toggleWholeAnswerInEditor(answerIndex, sideLabel = '') {
             if (getAnswerAddedCount(answerIndex) > 0) {
                 removeWholeAnswerFromEditor(answerIndex, sideLabel);
@@ -853,19 +863,10 @@
             renderPaneSubMeta(aIndex, dataSubMetaA);
             renderPaneSubMeta(bIndex, dataSubMetaB);
 
-            // 상단 타이틀 밑 설명란 자리에 통합 메타정보 할당 (Item 8)
+            // 상단 타이틀 밑 설명란 자리에 통합 메타정보 할당
             meta.textContent = `총 ${total}개의 리롤 | 현재 답변 ${current + 1}/${total}`;
             if (overwriteTarget) overwriteTarget.textContent = `현재 답변 ${current + 1}/${total} 덮어쓰기`;
             if (overwriteTarget) overwriteTarget.title = messageIdOf(bundle.variants[current]);
-        }
-
-        function setTab(tabName) {
-            overlay.querySelectorAll('[data-tab]').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.tab === tabName);
-            });
-            overlay.querySelectorAll('.crack-pane-content').forEach(pane => {
-                pane.style.display = pane.dataset.pane === tabName ? 'flex' : 'none';
-            });
         }
 
         selectA.addEventListener('change', renderAll);
@@ -1158,10 +1159,10 @@
                 box-sizing: border-box;
             }
 
-            /* 탭 구조 (북마크 탭 스타일링 동기화 및 정렬/간격 조정) */
+            /* 탭 구조 (정렬 상태 및 간격 1.5배 개선) */
             .cbm-tabs-container {
                 display: flex;
-                justify-content: center; /* 가운데 정렬 */
+                justify-content: center !important; /* 가로 가운데 정렬 */
                 align-items: center;
                 border-bottom: 1px solid #eee;
                 padding-bottom: 12px;
@@ -1169,8 +1170,8 @@
             }
             .cbm-tabs {
                 display: flex;
-                gap: 24px; /* 기존 12px 대비 넓은 간격 구현 */
-                margin-bottom: -13px;
+                gap: 24px !important; /* 탭 간 간격 1.5배 조정 */
+                margin-bottom: -13px; /* 가로선과의 간격 규격 원복 */
             }
             .cbm-tab {
                 background: none;
@@ -1178,14 +1179,14 @@
                 font-size: 14px;
                 font-weight: 600;
                 color: #888;
-                padding: 0 4px 12px 4px;
+                padding: 0 4px 12px 4px; /* 본래의 하단 간격 복원 */
                 cursor: pointer;
                 border-bottom: 2px solid transparent;
                 transition: 0.2s;
             }
             .cbm-tab.active {
-                color: #111 !important; /* 선택된 탭 검정색 지정 */
-                font-weight: 700 !important; /* 선택된 탭 볼드 적용 */
+                color: #111 !important; /* 선택 시 텍스트 검정색 */
+                font-weight: 700 !important; /* 선택 시 볼드체 강조 */
                 border-bottom-color: #bfdca4 !important;
             }
             .cbm-tab:hover {
@@ -1248,13 +1249,27 @@
             .crack-ext-ai-mbtn:hover {
                 background: #ddd !important;
             }
-            .crack-ext-ai-mbtn-p {
+
+            /* 덮어쓰기 버튼 스타일 고유화 (3in1 스크립트 핑크색 충돌 방지용) */
+            .crack-reroll-mbtn-p {
+                padding: 8px 16px;
+                border-radius: 8px;
+                border: 1px solid #bfdca4 !important;
                 background: #bfdca4 !important;
                 color: #333 !important;
-                border-color: #bfdca4 !important;
+                cursor: pointer;
+                font-size: 13px;
+                font-weight: 600;
+                transition: background 0.2s;
+                text-align: center;
+                height: 36px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                box-sizing: border-box;
             }
-            .crack-ext-ai-mbtn-p:hover {
-                background: #b0d294 !important; /* 호버 시 연초록 계열 호버색 명시 */
+            .crack-reroll-mbtn-p:hover {
+                background: #b0d294 !important; /* 호버 시 한 단계 어두운 안정적인 연초록색 제공 */
                 border-color: #b0d294 !important;
                 color: #333 !important;
             }
@@ -1388,7 +1403,7 @@
             body[data-theme="dark"] .crack-ext-ai-mbtn:hover {
                 background: #444 !important;
             }
-            body[data-theme="dark"] .crack-ext-ai-mbtn-p {
+            body[data-theme="dark"] .crack-reroll-mbtn-p {
                 background: #bfdca4 !important;
                 border-color: #bfdca4 !important;
                 color: #333 !important;
